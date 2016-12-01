@@ -16,10 +16,11 @@
 
 -- Set CPU clock to 444MHz
 System.setCpuSpeed(444)
+FPS_TARGET = 60
 
 -- Init sound
 Sound.init()
---themeA = Sound.openMp3("app0:/sound/themeA.mp3")
+themeA = Sound.openMp3("app0:/sound/bensound-scifi.mp3")
 
 running = true
 -- Set PS Vita Resolution
@@ -61,13 +62,13 @@ local fps_counter = 0
 local fps_timer = Timer.new()
 local function reachedFPScap(x)
 	fps_counter = fps_counter + 1
-	if Timer.getTime(fps_timer) >= 1000 then
+	local frameTime = 1000/x
+	if Timer.getTime(fps_timer) >= frameTime then
 		Timer.reset(fps_timer)
 		fps_counter = 0
 	end
 	return (fps_counter >= x)
 end
-
 
 -- Game functions
 function starfield()
@@ -82,7 +83,7 @@ function starfield()
 		
 		newStars[i][1] = newStars[i][1] - newStars[i][3];
 		if newStars[i][1] < 0 then -- Spawn a new star for each star that goes out of the screen
-			newStars[i] = {width, math.random(height), math.sqrt(math.random(100))}
+			newStars[i] = {width, math.random(height), math.sqrt(math.random(10))}
 		end
 	end	
 	
@@ -93,25 +94,31 @@ end
 for i = 1, STARS do
 	newStars[i] = {width, height, math.random(10)}
 end
---Sound.play(themeA, LOOP)
+Sound.play(themeA, LOOP)
 -- Starfield
 
 
 
 while running do
 
-	while not reachedFPScap(10) do
+	while not reachedFPScap(FPS_TARGET) do
 		Graphics.initBlend()
 		Screen.clear()
 		--
 		starfield()
-		
+		Graphics.debugPrint(0,0, "FPS:"..FPS_TARGET, color.royalBlue)
 		
 		--
 		Graphics.termBlend()
 		Screen.flip()
-		if Controls.check(Controls.read(), SCE_CTRL_START) then
-			running = false
+		if Controls.check(Controls.read(), SCE_CTRL_DOWN) then
+			FPS_TARGET = FPS_TARGET - 1
+			if FPS_TARGET <= 0 then
+				FPS_TARGET = 1
+			end
+		end
+		if Controls.check(Controls.read(), SCE_CTRL_UP) then
+			FPS_TARGET = FPS_TARGET + 1
 		end
 	end
 end
