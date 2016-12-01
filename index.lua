@@ -77,15 +77,16 @@ function starfield()
 	if gameLoopCounter == 1 then
 		gameTimer = Timer.new()
 	end
-  
-	for i = 1, STARS do
-		Graphics.fillCircle(newStars[i][1], newStars[i][2], 4, color.white)
-		
-		newStars[i][1] = newStars[i][1] - newStars[i][3];
-		if newStars[i][1] < 0 then -- Spawn a new star for each star that goes out of the screen
-			newStars[i] = {width, math.random(height), math.sqrt(math.random(10))}
+	if gameTimer >= 5000 then
+		for i = 1, STARS do
+			Graphics.fillCircle(newStars[i][1], newStars[i][2], 4, color.white)
+			
+			newStars[i][1] = newStars[i][1] - newStars[i][3];
+			if newStars[i][1] < 0 then -- Spawn a new star for each star that goes out of the screen
+				newStars[i] = {width, math.random(height), math.sqrt(math.random(10))}
+			end
 		end
-	end	
+	end
 	
 	
 end
