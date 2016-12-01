@@ -19,7 +19,7 @@ System.setCpuSpeed(444)
 
 -- Init sound
 Sound.init()
-themeA = Sound.openMp3("app0:/sound/themeA.mp3")
+--themeA = Sound.openMp3("app0:/sound/themeA.mp3")
 
 running = true
 -- Set PS Vita Resolution
@@ -44,11 +44,11 @@ local gameLoopCounter = 0;
 
 
 -- Stars
-local STARS = 100
+local STARS = 50
 
 -- Array for the stars to be stored
 local newStars = {}
-for i = 1, STARS, do
+for i = 1, STARS do
 	newStars[i] = {}
 	for j = 1, 3 do
 		newStars[i][j] = 0
@@ -57,6 +57,17 @@ end
 
 
 -- Important functions
+local fps_counter = 0
+local fps_timer = Timer.new()
+local function reachedFPScap(x)
+	fps_counter = fps_counter + 1
+	if Timer.getTime(fps_timer) >= 1000 then
+		Timer.reset(fps_timer)
+		fps_counter = 0
+	end
+	return (fps_counter >= x)
+end
+
 
 -- Game functions
 function starfield()
@@ -66,14 +77,12 @@ function starfield()
 		gameTimer = Timer.new()
 	end
   
-	for i = 1, STARS then
-		Graphics.fillCircle(stars[i][1], stars[i][2], 5, white)
+	for i = 1, STARS do
+		Graphics.fillCircle(newStars[i][1], newStars[i][2], 4, color.white)
 		
-		stars[i][1] = stars[i][1] - stars[i][3];
+		newStars[i][1] = newStars[i][1] - newStars[i][3];
 		if newStars[i][1] < 0 then -- Spawn a new star for each star that goes out of the screen
-			newStars[i][1] = math.random(width)
-			newStars[i][2] = math.random(height)
-			newStars[i][3] = math.sqrt(math.random(100))
+			newStars[i] = {width, math.random(height), math.sqrt(math.random(100))}
 		end
 	end	
 	
@@ -81,22 +90,31 @@ function starfield()
 end
 
 
-Sound.play(themeA, LOOP)
+for i = 1, STARS do
+	newStars[i] = {width, height, math.random(10)}
+end
+--Sound.play(themeA, LOOP)
 -- Starfield
+
+
+
 while running do
-	Graphics.initBlend()
-	Screen.clear()
-	--
-	starfield()
-	
-	
-	--
-	Graphics.termBlend()
-	Screen.flip()
-	if Controls.check(Controls.read(), SCE_CTRL_START) then
-		System.exit()
+
+	while not reachedFPScap(10) do
+		Graphics.initBlend()
+		Screen.clear()
+		--
+		starfield()
+		
+		
+		--
+		Graphics.termBlend()
+		Screen.flip()
+		if Controls.check(Controls.read(), SCE_CTRL_START) then
+			running = false
+		end
 	end
-	
 end
 
 Sound.term()
+System.exit()
