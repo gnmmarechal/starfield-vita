@@ -4,7 +4,7 @@
 --
 -- http://gs2012.xyz
 -- 
---
+-- PSXScene: gnmmarechal
 -- Wololo: gnmmarechal
 -- GBATemp: gnmmarechal
 -- Reddit: /u/gnmpolicemata
@@ -14,9 +14,12 @@
 --
 --
 
-debugMode = false
-debugAllowed = false
-verString = "Starfield Vita v0.1 - by gnmmarechal"
+local debugMode = false
+local debugAllowed = false
+local verString = "Starfield Vita v0.2 - by gnmmarechal"
+local URL = {
+	updateScore = "http://gs2012.xyz/psv/starfield-vita/var/SFVupdateScore.php",
+}
 
 -- Set CPU clock to 444MHz
 System.setCpuSpeed(444)
@@ -26,17 +29,18 @@ local oldpad = pad
 System.createDirectory("ux0:/data")
 System.createDirectory("ux0:/data/Starfield-Vita")
 
+Socket.init()
 -- Init sound
 Sound.init()
 themeA = Sound.openMp3("app0:/res/sound/bensound-scifi.mp3")
 
-running = true
+local running = true
 
 -- GekiHEN Splash Screen
-splashScreen = Graphics.loadImage("app0:/res/img/splash.png")
-logoImage = Graphics.loadImage("app0:/res/img/logo.png")
+local splashScreen = Graphics.loadImage("app0:/res/img/splash.png")
+local logoImage = Graphics.loadImage("app0:/res/img/logo.png")
 
-splashTimer = Timer.new()
+local splashTimer = Timer.new()
 
 while(Timer.getTime(splashTimer) <= 3000) do
 	Graphics.initBlend()
@@ -130,10 +134,17 @@ function getDist(x1, y1, x2, y2)
 end
 
 -- Game functions
+function updateServerScore(intScore)
+	if Network.isWifiEnabled() then
+		
+	end
+end
+
 function gameOver()
 	if score > recordScore then
 		recordScore = score
 		saveScore(recordScore, scoreFilePath)
+		updateServerScore(recordScore)
 	end
 	score = 0
 	lives = 3
@@ -290,11 +301,11 @@ Sound.play(themeA, LOOP)
 
 
 readScore(scoreFilePath)
-
+local oldpad = Controls.read()
 while running do
 
 	while not reachedFPScap(FPS_TARGET) do
-		pad = Controls.read()
+		local pad = Controls.read()
 		Graphics.initBlend()
 		Screen.clear()
 		--
@@ -305,27 +316,29 @@ while running do
 		
 		
 		if debugMode then
-			if Controls.check(pad, SCE_CTRL_LTRIGGER) then
+			if Controls.check(pad, SCE_CTRL_LTRIGGER) and (not Controls.check(oldpad, SCE_CTRL_LTRIGGER) then
 				FPS_TARGET = FPS_TARGET - 1
 				if FPS_TARGET <= 0 then
 					FPS_TARGET = 1
 				end
 			end
-			if Controls.check(pad, SCE_CTRL_RTRIGGER) then
+			if Controls.check(pad, SCE_CTRL_RTRIGGER) and (not Controls.check(oldpad, SCE_CTRL_RTRIGGER) then
 				FPS_TARGET = FPS_TARGET + 1
 			end
 		end
 		
-		if Controls.check(pad, SCE_CTRL_SELECT) and debugAllowed then
+		if Controls.check(pad, SCE_CTRL_SELECT) and debugAllowed and (not Controls.check(oldpad, SCE_CTRL_SELECT) then
 			debugMode = not debugMode
-		end	
+		end
+		if Controls.check(pad, SCE_CTRL_START) and (not Controls.check(oldpad, SCE_CTRL_START)) then
+			System.takeScreenshot("ux0:/data/file.jpg", true, 0)
+		end
+		oldpad = pad		
 	end
 	
-	if Controls.check(pad, SCE_CTRL_START) and (not Controls.check(oldpad, SCE_CTRL_START)) then
-		System.takeScreenshot("ux0:/data/file.jpg", true, 0)
-	end
-	oldpad = pad
+
 end
 
 Sound.term()
+Socket.term()
 System.exit()
