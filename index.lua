@@ -64,6 +64,9 @@ local color = {
 
 
 -- Important Variables
+local rel = 1
+local worldScore = 1337
+local worldPerson = "rekt"
 local score = 0
 local recordScore = 0
 local scoreFilePath = "ux0:/data/Starfield-Vita/record.dat"
@@ -131,10 +134,36 @@ function getDist(x1, y1, x2, y2)
 end
 
 -- Game functions
+function explode(div,str)
+    if (div=='') then return false end
+    local pos,arr = 0,{}
+    for st,sp in function() return string.find(str,div,pos,true) end do
+        table.insert(arr,string.sub(str,pos,st-1))
+        pos = sp + 1
+    end
+    table.insert(arr,string.sub(str,pos))
+    return arr
+end
+function getServerInfo(var)
+	retVal = "Connection?"
+	if Network.isWifiEnabled() then
+		local skt = Socket.connect("game.gs2012.xyz", 80)
+		local payload = "GET /starfield-vita/index.php?"..var.." HTTP/1.1\r\nHost: game.gs2012.xyz\r\n\r\n"
+		Socket.send(skt, payload)
+		
+		raw_data = ""
+		while raw_data == "" do
+			raw_data = raw_data .. Socket.receive(skt, 8192)
+		end
+		local lines = explode("\r\n", raw_data)
+		retVal = lines[10]
+	end
+	return retVal
+end
 function updateServerScore(intScore)
 	if Network.isWifiEnabled() then
 		local skt  = Socket.connect("game.gs2012.xyz", 80)
-		local payload = "GET /starfield-vita/SFVupdateScore.php?score="..intScore.."&user="..System.getUsername().." HTTP/1.1\r\nHost: game.gs2012.xyz\r\n\r\n"
+		local payload = "GET /starfield-vita/SFVupdateScore.php?rel="..rel.."&score="..intScore.."&user="..System.getUsername().." HTTP/1.1\r\nHost: game.gs2012.xyz\r\n\r\n"
 		Socket.send(skt, payload)
 	end
 end
@@ -144,6 +173,8 @@ function gameOver()
 		recordScore = score
 		saveScore(recordScore, scoreFilePath)
 		updateServerScore(recordScore)
+		worldScore = getServerInfo("score")
+		worldPerson = getServerInfo("user")
 	end
 	score = 0
 	lives = 3
@@ -159,8 +190,9 @@ end
 function gameMenu()
 	Graphics.drawImage(210, 50, logoImage)
 	Graphics.debugPrint(0, 0, verString, color.royalBlue)
-	Graphics.debugPrint(0, 20, "Record: "..recordScore, color.royalBlue)
-	Graphics.debugPrint(0, 40, "Press X to start", color.royalBlue)
+	Graphics.debugPrint(0, 20, "Local High Score: "..recordScore, color.royalBlue)
+	Graphics.debugPrint(0, 40, "World High Score: "..worldScore.." by "..worldPerson, color.royalBlue)
+	Graphics.debugPrint(0, 60, "Press X to start", color.royalBlue)
 	if Controls.check(pad, SCE_CTRL_CROSS) and (not Controls.check(oldpad, SCE_CTRL_CROSS)) then
 		curScene = 1
 		System.wait(100)
@@ -301,10 +333,15 @@ Sound.play(themeA, LOOP)
 
 readScore(scoreFilePath)
 local oldpad = Controls.read()
+
+if Network.isWifiEnabled() then
+	worldScore = getServerInfo("score")
+	worldPerson = getServerInfo("user")
+end
 while running do
 
 	while not reachedFPScap(FPS_TARGET) do
-		local pad = Controls.read()
+		pad = Controls.read()
 		Graphics.initBlend()
 		Screen.clear()
 		--
@@ -315,18 +352,18 @@ while running do
 		
 		
 		if debugMode then
-			if Controls.check(pad, SCE_CTRL_LTRIGGER) and (not Controls.check(oldpad, SCE_CTRL_LTRIGGER) then
+			if Controls.check(pad, SCE_CTRL_LTRIGGER) and not Controls.check(oldpad, SCE_CTRL_LTRIGGER) then
 				FPS_TARGET = FPS_TARGET - 1
 				if FPS_TARGET <= 0 then
 					FPS_TARGET = 1
 				end
 			end
-			if Controls.check(pad, SCE_CTRL_RTRIGGER) and (not Controls.check(oldpad, SCE_CTRL_RTRIGGER) then
+			if Controls.check(pad, SCE_CTRL_RTRIGGER) and not Controls.check(oldpad, SCE_CTRL_RTRIGGER) then
 				FPS_TARGET = FPS_TARGET + 1
 			end
 		end
 		
-		if Controls.check(pad, SCE_CTRL_SELECT) and debugAllowed and (not Controls.check(oldpad, SCE_CTRL_SELECT) then
+		if Controls.check(pad, SCE_CTRL_SELECT) and debugAllowed and not Controls.check(oldpad, SCE_CTRL_SELECT) then
 			debugMode = not debugMode
 		end
 		if Controls.check(pad, SCE_CTRL_START) and (not Controls.check(oldpad, SCE_CTRL_START)) then
