@@ -17,9 +17,6 @@
 local debugMode = false
 local debugAllowed = false
 local verString = "Starfield Vita v0.2 - by gnmmarechal"
-local URL = {
-	updateScore = "http://gs2012.xyz/psv/starfield-vita/var/SFVupdateScore.php",
-}
 
 -- Set CPU clock to 444MHz
 System.setCpuSpeed(444)
@@ -136,7 +133,9 @@ end
 -- Game functions
 function updateServerScore(intScore)
 	if Network.isWifiEnabled() then
-		
+		local skt  = Socket.connect("game.gs2012.xyz", 80)
+		local payload = "GET /starfield-vita/SFVupdateScore.php?score="..intScore.."&user="..System.getUsername().." HTTP/1.1\r\nHost: game.gs2012.xyz\r\n\r\n"
+		Socket.send(skt, payload)
 	end
 end
 
