@@ -4,7 +4,7 @@
 --
 -- http://gs2012.xyz
 -- 
--- PSXScene: gnmmarechal
+-- PSX-Place: gnmmarechal
 -- Wololo: gnmmarechal
 -- GBATemp: gnmmarechal
 -- Reddit: /u/gnmpolicemata
@@ -14,32 +14,73 @@
 --
 --
 
+System.setCpuSpeed(444)
+Socket.init()
+Sound.init()
+
+
+-- Basic Settings
 local debugMode = false
 local debugAllowed = false
-local verString = "Starfield Vita v0.2 - by gnmmarechal"
-
--- Set CPU clock to 444MHz
-System.setCpuSpeed(444)
+local verString = "Starfield Vita v0.2.1 - by gnmmarechal"
 local FPS_TARGET = 60
-local pad = Controls.read()
-local oldpad = pad
+local Display = {
+	width = 960,
+	height = 544
+}
+local Default = {
+	splashTime = 3000,
+	release = 1,
+	lives = 3,
+	MAX_STARS = 50,
+	score = 0,
+	startingScene = 0,
+	scoreFilePath = "ux0:/data/Starfield-Vita/record.dat",
+	username = "ERROR"
+}
+
+local Resources = {
+	sound = {
+		bgm1 = Sound.openMp3("app0:/res/sound/bensound-scifi.mp3")
+	}
+	image = {
+		splashScreen = Graphics.loadImage("app0:/res/img/splash.png"),
+		logoImage = Graphics.loadImage("app0:/res/img/logo.png")
+	}
+}
+local rel = Default.release
+-- Colours
+local color = {
+	white = Color.new(255,255,255),
+	red = Color.new(255,0,0),
+	yellow = Color.new(255,255,0),
+	royalBlue = Color.new(65, 105, 225)
+}
+
 System.createDirectory("ux0:/data")
 System.createDirectory("ux0:/data/Starfield-Vita")
-
-Socket.init()
--- Init sound
-Sound.init()
-themeA = Sound.openMp3("app0:/res/sound/bensound-scifi.mp3")
-
+local pad = Controls.read()
+local oldpad = pad
 local running = true
+local worldScore = Default.score
+local worldPerson = Default.username
+local score = Default.score
+local recordScore = Default.score
+local lives = Default.lives
+local gameLoopCounter = 0
+local lifeTakenTimer = Timer.new()
+local lifeTaken = false
+local curScene = Default.startingScene
+local shipCoords = {
+	x = 40,
+	y = math.floor(Display.height/2) 
+}
 
--- GekiHEN Splash Screen
-local splashScreen = Graphics.loadImage("app0:/res/img/splash.png")
-local logoImage = Graphics.loadImage("app0:/res/img/logo.png")
+Sound.play(Resources.sound.bgm1, LOOP)
 
+-- Splash Screen
 local splashTimer = Timer.new()
-
-while(Timer.getTime(splashTimer) <= 3000) do
+while(Timer.getTime(splashTimer) <= Default.splashTime) do
 	Graphics.initBlend()
 	Screen.clear()
 	--
@@ -50,45 +91,9 @@ while(Timer.getTime(splashTimer) <= 3000) do
 end
 Timer.destroy(splashTimer)
 
--- Set PS Vita Resolution
-local width = 960
-local height = 544
-
--- Colours
-local color = {
-	white = Color.new(255,255,255),
-	red = Color.new(255,0,0),
-	yellow = Color.new(255,255,0),
-	royalBlue = Color.new(65, 105, 225)
-}
-
-
--- Important Variables
-local rel = 1
-local worldScore = 1337
-local worldPerson = "rekt"
-local score = 0
-local recordScore = 0
-local scoreFilePath = "ux0:/data/Starfield-Vita/record.dat"
-local lives = 3
-
-local gameLoopCounter = 0
-local lifeTakenTimer = Timer.new()
-local lifeTaken = false
-local curScene = 0
-
-local shipCoords = {
-	x = 40,
-	y = math.floor(height/2) 
-}
-
-
--- Stars
-local STARS = 50
-
 -- Array for the stars to be stored
 local newStars = {}
-for i = 1, STARS do
+for i = 1, Default.MAX_STARS do
 	newStars[i] = {}
 	for j = 1, 3 do
 		newStars[i][j] = 0
@@ -134,7 +139,7 @@ function getDist(x1, y1, x2, y2)
 end
 
 -- Game functions
-function explode(div,str)
+function explode(div,str) -- Splits a string into a table, with div as the delimiter and str as the string.
     if (div=='') then return false end
     local pos,arr = 0,{}
     for st,sp in function() return string.find(str,div,pos,true) end do
@@ -144,7 +149,7 @@ function explode(div,str)
     table.insert(arr,string.sub(str,pos))
     return arr
 end
-function getServerInfo(var)
+function getServerInfo(var) -- Returns a value from the server (score, username, etc.)
 	retVal = "Connection?"
 	if Network.isWifiEnabled() then
 		local skt = Socket.connect("game.gs2012.xyz", 80)
@@ -160,7 +165,7 @@ function getServerInfo(var)
 	end
 	return retVal
 end
-function updateServerScore(intScore)
+function updateServerScore(intScore) -- Sends a new high score to the server
 	if Network.isWifiEnabled() then
 		local skt  = Socket.connect("game.gs2012.xyz", 80)
 		local payload = "GET /starfield-vita/SFVupdateScore.php?rel="..rel.."&score="..intScore.."&user="..System.getUsername().." HTTP/1.1\r\nHost: game.gs2012.xyz\r\n\r\n"
@@ -168,7 +173,7 @@ function updateServerScore(intScore)
 	end
 end
 
-function gameOver()
+function gameOver() -- Game end operations
 	if score > recordScore then
 		recordScore = score
 		saveScore(recordScore, scoreFilePath)
@@ -177,14 +182,13 @@ function gameOver()
 		worldPerson = getServerInfo("user")
 	end
 	score = 0
-	lives = 3
-	
+	lives = Default.lives
 	gameLoopCounter = 0
 	lifeTakenTimer = Timer.new()
 	lifeTaken = false
-	curScene = 0
-	for i = 1, STARS do
-		newStars[i] = {width, math.random(height), math.sqrt(math.random(4))}
+	curScene = Default.startingScene
+	for i = 1, Default.MAX_STARS do
+		newStars[i] = {Display.width, math.random(Display.height), math.sqrt(math.random(4))}
 	end	
 end
 function gameMenu()
@@ -263,11 +267,11 @@ function starfield()
 	if shipCoords.x <= 0 then
 		shipCoords.x = 0
 	end
-	if shipCoords.x >= width then
-		shipCoords.x = width
+	if shipCoords.x >= Display.width then
+		shipCoords.x = Display.width
 	end
-	if shipCoords.y >= height then
-		shipCoords.y = height
+	if shipCoords.y >= Display.height then
+		shipCoords.y = Display.height
 	end
 	if shipCoords.y <= 0 then
 		shipCoords.y = 0
@@ -277,12 +281,12 @@ function starfield()
 	end
 	-- Don't spawn stars for the first 5 seconds.
 	if Timer.getTime(gameTimer) >= 5000 then
-		for i = 1, STARS do
+		for i = 1, Default.MAX_STARS do
 			Graphics.fillCircle(newStars[i][1], newStars[i][2], 4, color.white)
 			
 			newStars[i][1] = newStars[i][1] - newStars[i][3];
 			if newStars[i][1] < 0 then -- Spawn a new star for each star that goes out of the screen
-				newStars[i] = {width, math.random(height), math.sqrt(math.random(4))}
+				newStars[i] = {Display.width, math.random(Display.height), math.sqrt(math.random(4))}
 			end
 			
 			-- Check collision
@@ -324,10 +328,10 @@ function game(scene)
 	end	
 end
 
-for i = 1, STARS do
-	newStars[i] = {width, math.random(height), math.sqrt(math.random(4))}
+for i = 1, Default.MAX_STARS do
+	newStars[i] = {Display.width, math.random(Display.height), math.sqrt(math.random(4))}
 end
-Sound.play(themeA, LOOP)
+
 -- Starfield
 
 
